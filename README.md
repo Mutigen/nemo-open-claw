@@ -106,6 +106,65 @@ wsl -d Ubuntu bash -lc "openshell inference get"
 
 Hinweis: Größere Modelle erhöhen RAM/CPU-Last deutlich. Bei CPU-only Betrieb zuerst mit `7b` testen, dann schrittweise erhöhen.
 
+## Ollama Cloud Integration
+
+Falls dein PC nicht genug Speicher/Rechenleistung für stärkere lokale Modelle hat:
+
+### 1. API-Key einrichten
+
+Registriere dich bei [Ollama Cloud](https://ollama.com/login) und generiere einen API-Key.
+
+### 2. OpenShell Provider erstellen
+
+```powershell
+wsl -d Ubuntu bash -lc "
+openshell provider create --name ollama-cloud --type openai \
+  --credential 'OPENAI_API_KEY=<DEIN_API_KEY>' \
+  --config 'OPENAI_BASE_URL=https://ollama.com/v1'
+"
+```
+
+**Wichtig**: 
+- Basis-URL ist `https://ollama.com/v1` (NICHT `api.ollama.com`)
+- Modellnamen verwenden Doppelpunkt: z. B. `qwen3-coder:480b`
+
+### 3. Inferenz-Route umstellen
+
+```powershell
+wsl -d Ubuntu bash -lc "
+openshell inference set --no-verify --provider ollama-cloud --model qwen3-coder:480b
+"
+```
+
+### 4. Verfügbare Cloud-Modelle
+
+Listing (mit gültigem API-Key):
+
+```bash
+curl -s https://ollama.com/v1/models \
+  -H "Authorization: Bearer <DEIN_API_KEY>" | python3 -m json.tool
+```
+
+Beliebte Modelle:
+- `qwen3-coder:480b` — StarCode für Code-Aufgaben (schnell, ~500 Milliarden Parameter)
+- `qwen3.5:397b` — Allzweck-Modell (stark)
+- `mistral-large-3:675b` — Sehr großes Modell
+- `gemini-3-flash-preview` — Google Gemini kompatibel
+
+### 5. Test
+
+```bash
+# direkt zum Ollama Cloud API
+curl https://ollama.com/v1/chat/completions \
+  -H "Authorization: Bearer <DEIN_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"qwen3-coder:480b","messages":[{"role":"user","content":"2+2"}],"max_tokens":20}'
+```
+
+Erwartung: `"2 + 2 = 4"` (oder ähnliche Antwort), **keine** `unauthorized` Fehler.
+
+---
+
 ## Troubleshooting
 
 Die Session mit Fehlern/Lösungen ist in [docs/SESSION_TROUBLESHOOTING.md](docs/SESSION_TROUBLESHOOTING.md) dokumentiert.
@@ -115,9 +174,27 @@ Häufige Ursachen:
 - Port `8080` belegt → alten Gateway/Sandbox-Prozess bereinigen
 - Onboarding stoppt bei NIM-Key → für lokalen Betrieb `ollama-local` nutzen
 - WSL kann Ollama nicht erreichen → Ollama auf Host prüfen und Route validieren
+- Cloud-API antwortet 301 Redirect → Basis-URL prüfen (sollte `https://ollama.com/v1` sein)
+- Cloud-API antwortet "model not found" → Modellnamen mit Doppelpunkt prüfen (z. B. `qwen3-coder:480b`)
 
 ## Sicherheit / Hinweise
 
-- Cloud-Modus benötigt `NVIDIA_API_KEY`.
-- Local-Ollama ist ohne Cloud-Key nutzbar; CPU-only ist möglich, aber langsamer.
-- OpenShell-Gateway (`https://127.0.0.1:8080`) ist mTLS-geschützt und keine normale Browser-UI.
+- **Ollama Cloud API-Key**: In `openshell provider` Konten gespeichert. Nicht in Versionskontrolle committen.
+- **Local-Ollama** ist ohne Cloud-Key nutzbar; CPU-only ist möglich, aber langsamer.
+- **OpenShell Gateway** (`https://127.0.0.1:8080`) ist mTLS-geschützt und keine normale Browser-UI.
+
+---
+
+## Zusammenfassung der aktuellen Konfiguration
+
+Nach erfolgreichem Onboarding sollte folgendes laufen:
+
+| Komponente | Status | Details |
+|-----------|--------|---------|
+| Windows Ollama | läuft | Host: `http://127.0.0.1:11434` |
+| Docker Desktop | läuft | v29.2.1 (WSL VHDX auf `F:\Docker`) |
+| OpenShell Gateway | läuft | `https://127.0.0.1:8080`, mTLS |
+| Sandbox `my-assistant` | ready | Model: `qwen3-coder:480b`, Provider: `ollama-cloud` |
+| NemoClaw CLI | funktioniert | WSL: `/home/levan/nemoclaw` |
+
+Inferenz läuft über Ollama Cloud, komplexe Aufgaben sind jetzt möglich ohne lokal Speicher zu überlasten!
