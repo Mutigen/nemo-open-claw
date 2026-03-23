@@ -1,0 +1,24 @@
+# Runtime / local state
+agents/
+logs/
+memory/
+
+# Device and identity secrets
+devices/
+identity/
+openclaw.json
+openclaw.json.bak
+
+# Local update/runtime metadata
+update-check.json
+
+# Upstream vendor repo clone (separate git repo)
+NemoClaw/
+workspace/
+run_nemoclaw_ollama_onboard.sh
+
+# OS / editor
+.vscode/
+*.log
+*.tmp
+*.bak
