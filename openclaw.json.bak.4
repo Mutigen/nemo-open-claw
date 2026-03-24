@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.3.11",
+    "lastTouchedAt": "2026-03-24T15:24:04.597Z"
+  },
+  "wizard": {
+    "lastRunAt": "2026-03-03T20:32:17.845Z",
+    "lastRunVersion": "2026.3.2",
+    "lastRunCommand": "onboard",
+    "lastRunMode": "local"
+  },
+  "auth": {
+    "profiles": {
+      "ollama-local:manual": {
+        "provider": "ollama-local",
+        "mode": "token"
+      },
+      "ollama-cloud:manual": {
+        "provider": "ollama-cloud",
+        "mode": "token"
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "ollama-local": {
+        "baseUrl": "http://127.0.0.1:11434/v1",
+        "apiKey": "ollama-local",
+        "api": "ollama",
+        "models": [
+          {
+            "id": "qwen2.5:7b",
+            "name": "qwen2.5:7b (local)",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            }
+          },
+          {
+            "id": "qwen2.5:3b",
+            "name": "qwen2.5:3b (local)",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            }
+          }
+        ]
+      },
+      "ollama-cloud": {
+        "baseUrl": "https://ollama.com/v1",
+        "apiKey": "<OLLAMA_API_KEY_HERE>",
+        "api": "ollama",
+        "models": [
+          {
+            "id": "qwen3-coder:480b",
+            "name": "qwen3-coder:480b (cloud)",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            }
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "ollama-cloud/qwen3-coder:480b"
+      },
+      "workspace": "C:\\Users\\levan\\.openclaw\\workspace"
+    }
+  },
+  "tools": {
+    "profile": "messaging",
+    "web": {
+      "search": {
+        "enabled": false
+      }
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "ollama"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    }
+  },
+  "plugins": {
+    "entries": {
+      "openclaw-web-search": {
+        "enabled": true
+      }
+    }
+  }
+}

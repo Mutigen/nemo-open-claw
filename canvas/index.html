@@ -1,90 +1,394 @@
 <!doctype html>
+<html lang="de">
+<head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>OpenClaw Canvas</title>
+<title>NemoClaw Chat - Local + Cloud</title>
 <style>
-  html, body { height: 100%; margin: 0; background: #000; color: #fff; font: 16px/1.4 -apple-system, BlinkMacSystemFont, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-  .wrap { min-height: 100%; display: grid; place-items: center; padding: 24px; }
-  .card { width: min(720px, 100%); background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 18px 18px 14px; }
-  .title { display: flex; align-items: baseline; gap: 10px; }
-  h1 { margin: 0; font-size: 22px; letter-spacing: 0.2px; }
-  .sub { opacity: 0.75; font-size: 13px; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-  button { appearance: none; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.10); color: #fff; padding: 10px 12px; border-radius: 12px; font-weight: 600; cursor: pointer; }
-  button:active { transform: translateY(1px); }
-  .ok { color: #24e08a; }
-  .bad { color: #ff5c5c; }
-  .log { margin-top: 14px; opacity: 0.85; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; white-space: pre-wrap; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); padding: 10px; border-radius: 12px; }
-</style>
-<div class="wrap">
-  <div class="card">
-    <div class="title">
-      <h1>OpenClaw Canvas</h1>
-      <div class="sub">Interactive test page (auto-reload enabled)</div>
-    </div>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <div class="row">
-      <button id="btn-hello">Hello</button>
-      <button id="btn-time">Time</button>
-      <button id="btn-photo">Photo</button>
-      <button id="btn-dalek">Dalek</button>
-    </div>
-
-    <div id="status" class="sub" style="margin-top: 10px;"></div>
-    <div id="log" class="log">Ready.</div>
-  </div>
-</div>
-<script>
-(() => {
-  const logEl = document.getElementById("log");
-  const statusEl = document.getElementById("status");
-  const log = (msg) => { logEl.textContent = String(msg); };
-
-  const hasIOS = () =>
-    !!(
-      window.webkit &&
-      window.webkit.messageHandlers &&
-      window.webkit.messageHandlers.openclawCanvasA2UIAction
-    );
-  const hasAndroid = () =>
-    !!(
-      (window.openclawCanvasA2UIAction &&
-        typeof window.openclawCanvasA2UIAction.postMessage === "function")
-    );
-  const hasHelper = () => typeof window.openclawSendUserAction === "function";
-  statusEl.innerHTML =
-    "Bridge: " +
-    (hasHelper() ? "<span class='ok'>ready</span>" : "<span class='bad'>missing</span>") +
-    " · iOS=" + (hasIOS() ? "yes" : "no") +
-    " · Android=" + (hasAndroid() ? "yes" : "no");
-
-  const onStatus = (ev) => {
-    const d = ev && ev.detail || {};
-    log("Action status: id=" + (d.id || "?") + " ok=" + String(!!d.ok) + (d.error ? (" error=" + d.error) : ""));
-  };
-  window.addEventListener("openclaw:a2ui-action-status", onStatus);
-
-  function send(name, sourceComponentId) {
-    if (!hasHelper()) {
-      log("No action bridge found. Ensure you're viewing this on an iOS/Android OpenClaw node canvas.");
-      return;
-    }
-    const sendUserAction =
-      typeof window.openclawSendUserAction === "function"
-        ? window.openclawSendUserAction
-        : undefined;
-    const ok = sendUserAction({
-      name,
-      surfaceId: "main",
-      sourceComponentId,
-      context: { t: Date.now() },
-    });
-    log(ok ? ("Sent action: " + name) : ("Failed to send action: " + name));
+  :root {
+    --bg: #0d0d0f;
+    --surface: #17171a;
+    --surface2: #1f1f23;
+    --border: rgba(255,255,255,0.08);
+    --accent: #7c6fff;
+    --accent2: #5b4fe8;
+    --user-bg: #2a2560;
+    --bot-bg: #1c1c20;
+    --text: #e8e8ef;
+    --muted: rgba(232,232,239,0.5);
+    --green: #34d399;
+    --red: #f87171;
+    --radius: 14px;
   }
 
-  document.getElementById("btn-hello").onclick = () => send("hello", "demo.hello");
-  document.getElementById("btn-time").onclick = () => send("time", "demo.time");
-  document.getElementById("btn-photo").onclick = () => send("photo", "demo.photo");
-  document.getElementById("btn-dalek").onclick = () => send("dalek", "demo.dalek");
+  html, body { height: 100%; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; height: 100vh; max-width: 900px; margin: 0 auto; }
+
+  /* Header */
+  .header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .header-logo { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+  .header-title { font-weight: 700; font-size: 17px; }
+  .header-model { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .header-badge { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); transition: background .3s; }
+  .status-dot.ok { background: var(--green); }
+  .status-text { font-size: 12px; color: var(--muted); }
+
+  /* Settings bar */
+  .settings { display: flex; gap: 8px; align-items: center; padding: 10px 20px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .settings input, .settings select { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 13px; outline: none; transition: border-color .2s; }
+  .settings input:focus, .settings select:focus { border-color: var(--accent); }
+  .settings input[type=password] { flex: 1; min-width: 200px; font-family: monospace; letter-spacing: 2px; }
+  .settings input[type=password]::placeholder { letter-spacing: 0; font-family: inherit; }
+  .settings select { min-width: 200px; }
+  .settings label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .settings-group { display: flex; align-items: center; gap: 6px; }
+  .btn-sm { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; white-space: nowrap; transition: background .15s; }
+  .btn-sm:hover { background: var(--surface2); border-color: var(--accent); }
+
+  /* Messages */
+  .messages { flex: 1; overflow-y: auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .msg { display: flex; gap: 12px; max-width: 85%; animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg.bot { align-self: flex-start; }
+
+  .avatar { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; align-self: flex-end; }
+  .msg.user .avatar { background: var(--accent2); }
+  .msg.bot .avatar { background: #2d2d35; }
+
+  .bubble { background: var(--user-bg); padding: 12px 16px; border-radius: var(--radius); border-bottom-right-radius: 4px; position: relative; line-height: 1.65; font-size: 14.5px; }
+  .msg.bot .bubble { background: var(--bot-bg); border-bottom-right-radius: var(--radius); border-bottom-left-radius: 4px; }
+
+  .bubble pre { background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; margin: 8px 0; font-size: 13px; }
+  .bubble code { background: rgba(0,0,0,0.3); padding: 2px 5px; border-radius: 4px; font-size: 13px; font-family: ui-monospace, "Cascadia Code", Menlo, monospace; }
+  .bubble pre code { background: none; padding: 0; }
+
+  .msg-footer { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .msg-time { font-size: 11px; color: var(--muted); }
+  .msg-tokens { font-size: 11px; color: var(--muted); }
+  .copy-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 4px; border-radius: 4px; transition: color .15s; opacity: 0; }
+  .msg:hover .copy-btn { opacity: 1; }
+  .copy-btn:hover { color: var(--text); }
+
+  .typing { display: inline-flex; gap: 4px; align-items: center; padding: 4px 2px; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: bounce .9s infinite; }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,60%,100% { transform: none; } 30% { transform: translateY(-5px); } }
+
+  .empty-state { text-align: center; margin: auto; opacity: 0.4; user-select: none; }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 15px; }
+
+  /* Input bar */
+  .input-bar { display: flex; gap: 10px; padding: 16px 20px; background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .input-wrap { flex: 1; position: relative; }
+  textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 12px; padding: 12px 16px; font-size: 14.5px; font-family: inherit; resize: none; min-height: 48px; max-height: 180px; outline: none; transition: border-color .2s; line-height: 1.5; }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
+  .send-btn { background: var(--accent); border: none; color: #fff; border-radius: 12px; width: 48px; height: 48px; cursor: pointer; display: grid; place-items: center; flex-shrink: 0; font-size: 18px; transition: background .15s, transform .1s; align-self: flex-end; }
+  .send-btn:hover { background: var(--accent2); }
+  .send-btn:active { transform: scale(0.94); }
+  .send-btn:disabled { background: var(--surface2); cursor: default; }
+
+  .clear-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 12px; width: 48px; height: 48px; cursor: pointer; display: grid; place-items: center; flex-shrink: 0; font-size: 16px; transition: border-color .15s; align-self: flex-end; }
+  .clear-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .hint { font-size: 11px; color: var(--muted); padding: 0 20px 10px; text-align: center; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">🦞</div>
+    <div>
+      <div class="header-title">NemoClaw Chat</div>
+      <div class="header-model" id="active-model">qwen3-coder:480b · Ollama Cloud</div>
+    </div>
+    <div class="header-badge">
+      <div class="status-dot" id="status-dot"></div>
+      <span class="status-text" id="status-text">Nicht verbunden</span>
+    </div>
+  </header>
+
+  <!-- Settings -->
+  <div class="settings">
+    <div class="settings-group">
+      <label>Modus:</label>
+      <select id="mode-select">
+        <option value="local">Lokal (Ollama)</option>
+        <option value="cloud">Cloud (Qwen)</option>
+      </select>
+    </div>
+    <div class="settings-group">
+      <label>Modell:</label>
+      <select id="model-select">
+        <option value="">Modelle werden geladen...</option>
+      </select>
+    </div>
+    <div class="settings-group" id="cloud-key-group" style="display:none;">
+      <label>Cloud Key:</label>
+      <input type="password" id="cloud-api-key" placeholder="Ollama Cloud API Key" autocomplete="off" />
+    </div>
+    <button class="btn-sm" id="test-btn">🔌 Verbindung testen</button>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages" id="messages">
+    <div class="empty-state" id="empty-state">
+      <div class="icon">🦞</div>
+      <p>NemoClaw ist bereit.<br>Wähle ein Modell und starte zu chatten!</p>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-bar">
+    <button class="clear-btn" id="clear-btn" title="Chat leeren">🗑</button>
+    <div class="input-wrap">
+      <textarea id="input" rows="1" placeholder="Nachricht eingeben... (Enter zum Senden, Shift+Enter für neue Zeile)"></textarea>
+    </div>
+    <button class="send-btn" id="send-btn" title="Senden">➤</button>
+  </div>
+  <div class="hint">UI unter http://127.0.0.1:8081. Modus LOCAL nutzt Ollama 127.0.0.1:11434, Modus CLOUD nutzt Ollama Cloud (qwen3-coder:480b).</div>
+
+</div>
+
+<script>
+(() => {
+  const STORAGE_KEY = 'nemoclaw_ui_settings_v2';
+  const ENDPOINTS = {
+    local: {
+      chat: '/openclaw/chat',
+      models: '/openclaw/models?mode=local',
+      label: 'Lokal (Ollama)'
+    },
+    cloud: {
+      chat: '/openclaw/chat',
+      models: '/openclaw/models?mode=cloud',
+      label: 'Cloud (Qwen)'
+    }
+  };
+  
+  const messagesEl = document.getElementById('messages');
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('send-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const modeEl = document.getElementById('mode-select');
+  const modelEl = document.getElementById('model-select');
+  const cloudKeyGroupEl = document.getElementById('cloud-key-group');
+  const cloudApiKeyEl = document.getElementById('cloud-api-key');
+  const testBtn = document.getElementById('test-btn');
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+  const modelDisplay = document.getElementById('active-model');
+  const emptyState = document.getElementById('empty-state');
+
+  let history = [];
+  let isStreaming = false;
+
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  const SESSION_ID = saved.sessionId || ('ui-' + Math.random().toString(36).slice(2));
+  if (saved.mode) modeEl.value = saved.mode;
+  if (saved.cloudApiKey) cloudApiKeyEl.value = saved.cloudApiKey;
+
+  function getMode() {
+    return modeEl.value === 'cloud' ? 'cloud' : 'local';
+  }
+
+  function getEndpoint(mode = getMode()) {
+    return ENDPOINTS[mode];
+  }
+
+  function saveSettings() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      mode: getMode(),
+      cloudApiKey: cloudApiKeyEl.value.trim(),
+      sessionId: SESSION_ID
+    }));
+  }
+
+  function applyModeUi() {
+    const mode = getMode();
+    cloudKeyGroupEl.style.display = mode === 'cloud' ? '' : 'none';
+    modelDisplay.textContent = `${modelEl.value || 'kein Modell'} · ${getEndpoint(mode).label}`;
+  }
+
+  function buildHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    if (getMode() === 'cloud') {
+      const key = cloudApiKeyEl.value.trim();
+      if (!key) {
+        throw new Error('Cloud Key fehlt. Bitte bei Modus CLOUD eintragen.');
+      }
+      headers['x-ollama-api-key'] = key;
+    }
+    return headers;
+  }
+
+  // Load models on startup
+  async function loadModels() {
+    try {
+      const mode = getMode();
+      const endpoint = getEndpoint(mode);
+      const res = await fetch(endpoint.models, {
+        headers: buildHeaders()
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const models = data.data || [];
+      
+      if (models.length === 0) {
+        statusDot.className = 'status-dot';
+        statusText.textContent = 'Keine Modelle verfügbar';
+        return;
+      }
+
+      modelEl.innerHTML = '';
+      models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.id;
+        modelEl.appendChild(opt);
+      });
+
+      setStatus(true, `${models.length} Modelle · ${endpoint.label}`);
+      modelEl.value = models[0]?.id;
+      applyModeUi();
+      saveSettings();
+    } catch (e) {
+      statusDot.className = 'status-dot';
+      statusText.textContent = `Verbindungsfehler: ${e.message}`;
+    }
+  }
+
+  function setStatus(ok, msg) {
+    statusDot.className = 'status-dot' + (ok ? ' ok' : '');
+    statusText.textContent = msg;
+  }
+
+  function addMessage(role, text) {
+    if (emptyState.parentElement) emptyState.remove();
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    div.innerHTML = `<div class="avatar">${role === 'user' ? '👤' : '🦞'}</div><div><div class="bubble">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')}</div></div>`;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  function addTyping() {
+    const div = document.createElement('div');
+    div.className = 'msg bot';
+    div.innerHTML = '<div class="avatar">🦞</div><div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div></div>';
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  // Send message
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text || isStreaming) return;
+
+    const model = modelEl.value;
+    if (!model) { alert('Bitte Modell auswählen!'); return; }
+
+    history.push({ role: 'user', content: text });
+    addMessage('user', text);
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    isStreaming = true;
+    sendBtn.disabled = true;
+
+    const typingEl = addTyping();
+
+    try {
+      const mode = getMode();
+      const endpoint = getEndpoint(mode);
+      const res = await fetch(endpoint.chat, {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify({
+          mode,
+          model,
+          messages: history,
+          sessionId: SESSION_ID
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`HTTP ${res.status}: ${err}`);
+      }
+
+      const data = await res.json();
+      const fullText = data?.choices?.[0]?.message?.content || '';
+
+      typingEl.remove();
+      const msgDiv = addMessage('bot', '');
+      const bubble = msgDiv.querySelector('.bubble');
+
+      bubble.textContent = fullText;
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      if (fullText) history.push({ role: 'assistant', content: fullText });
+    } catch (e) {
+      typingEl.remove();
+      addMessage('bot', `❌ Fehler: ${e.message}`);
+    } finally {
+      isStreaming = false;
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+  }
+
+  // Event listeners
+  sendBtn.onclick = sendMessage;
+  modeEl.onchange = async () => {
+    applyModeUi();
+    await loadModels();
+  };
+  cloudApiKeyEl.onchange = () => {
+    saveSettings();
+  };
+  modelEl.onchange = () => applyModeUi();
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  clearBtn.onclick = () => {
+    history = [];
+    messagesEl.innerHTML = '';
+    messagesEl.appendChild(emptyState);
+    inputEl.value = '';
+  };
+
+  testBtn.onclick = loadModels;
+
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  });
+
+  // Startup
+  applyModeUi();
+  loadModels();
+  inputEl.focus();
 })();
 </script>
+</body>
+</html>
